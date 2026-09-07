@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spade Scoreboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:title" content="Spade Scoreboard">
+<meta property="og:description" content="Live score tracker for our spade card game.">
+<meta property="og:image" content="/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spade Scoreboard">
+<meta name="twitter:image" content="/og-image.png">
+<style>
+  :root { color-scheme: light; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+    background: #fafaf8;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #666; margin: 0 0 16px; }
+  select, button, input {
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: white;
+    box-sizing: border-box;
+  }
+  select { flex: 1; }
+  button { cursor: pointer; }
+  button.primary { background: #1a1a1a; color: #EF9F27; border-color: #1a1a1a; font-weight: 600; }
+  .banner { background: #1a1a1a; border-radius: 12px; padding: 1.25rem 1rem; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .banner p.title { color: #fff; font-size: 18px; font-weight: 600; margin: 0; }
+  .banner p.tag { color: #b4b2a9; font-size: 13px; margin: 2px 0 0; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .topbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .card {
+    background: white;
+    border: 1px solid #e5e5e0;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card.done { border-color: #2f6f4f; }
+  .card.progress { border-color: #c98a1f; }
+  .rowhead, .row {
+    display: grid;
+    grid-template-columns: 1.2fr 60px 60px 50px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .rowhead { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.03em; }
+  .row input[type=text] { font-weight: 500; }
+  .row input[type=number] { text-align: center; }
+  .pts { text-align: right; font-weight: 600; font-size: 15px; }
+  .totals-card { background: #f3f3ee; border-radius: 12px; padding: 14px 16px; }
+  .totals-title { font-size: 13px; font-weight: 600; color: #555; margin: 0 0 8px; }
+  .trow { display: flex; justify-content: space-between; font-size: 15px; padding: 3px 0; }
+  .trow-wrap { padding: 3px 0; border-bottom: 1px solid #ececE6; }
+  .trow-wrap:last-child { border-bottom: none; }
+  .trow-wrap .trow { padding: 0; border: none; }
+  .round-summary { font-size: 9px; color: #999; line-height: 1.4; margin-top: 2px; word-break: break-word; }
+  .rank1 { font-weight: 700; }
+  .status { font-size: 12px; color: #999; text-align: center; margin-top: 12px; }
+  .players-card { display: flex; flex-direction: column; gap: 8px; }
+  .player-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f3f3ee; border-radius: 8px; padding: 6px 10px; }
+  .player-chip input[type=text] { border: none; background: transparent; padding: 4px 2px; flex: 1; }
+  .player-chip button { padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+  .add-row { display: flex; gap: 8px; }
+  .add-row input { flex: 1; }
+  .add-row button { white-space: nowrap; }
+  .round-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .round-actions button { flex: 1; }
+  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .badge.done { background: #dff3e6; color: #1e5f3b; }
+  .badge.progress { background: #fbecd2; color: #8a5c0d; }
+  .round-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .error-text { font-size: 12px; color: #b3261e; margin: 4px 0 0; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10;
+  }
+  .modal {
+    background: white; border-radius: 12px; padding: 20px; max-width: 380px; width: 100%;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 16px; margin: 0 0 4px; }
+  .modal p.sub { margin: 0 0 12px; }
+  .modal-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #eee; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions button { flex: 1; }
+  .room-screen { display: flex; flex-direction: column; gap: 16px; }
+  .room-code-bar { display: flex; align-items: center; justify-content: space-between; background: #f3f3ee; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+  .room-code-bar .code { font-weight: 700; font-size: 16px; letter-spacing: 0.04em; }
+  .room-code-bar button { font-size: 12px; padding: 6px 10px; }
+  #app { display: none; }
+  .manage-row { background: white; border: 1px solid #e5e5e0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .manage-row .code { font-weight: 700; font-size: 15px; }
+  .manage-row .meta { font-size: 12px; color: #888; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+  <div class="room-screen" id="roomScreen">
+    <div class="banner">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2C8 7 4 10 4 14a5 5 0 0 0 8 4c0 2-1 3-2 4h8c-1-1-2-2-2-4a5 5 0 0 0 8-4c0-4-4-7-8-12z" fill="#EF9F27"/>
+      </svg>
+      <div>
+        <p class="title">Spade scoreboard</p>
+        <p class="tag">Live score tracker for the group</p>
+      </div>
+    </div>
+    <p class="sub">Create a room for your group, or join one with a code someone shared.</p>
+
+    <div class="card">
+      <h2>Create a new room</h2>
+      <p class="sub" style="margin-bottom:10px;">Leave the code blank to get a random one, or set your own.</p>
+      <div class="add-row" style="margin-bottom:8px;">
+        <input type="text" id="createCodeInput" placeholder="Room code (optional)">
+      </div>
+      <button class="primary" id="createRoomBtn" style="width:100%;">Create room</button>
+    </div>
+
+    <div class="card">
+      <h2>Join an existing room</h2>
+      <div class="add-row" style="margin-bottom:8px;">
+        <input type="text" id="joinCodeInput" placeholder="Enter room code">
+      </div>
+      <button class="primary" id="joinRoomBtn" style="width:100%;">Join room</button>
+    </div>
+
+    <p class="error-text" id="roomError" style="display:none;text-align:center;"></p>
+
+    <button id="openManageBtn" style="width:100%;">Manage rooms</button>
+  </div>
+
+  <div class="room-screen" id="manageScreen" style="display:none;">
+    <div class="room-code-bar">
+      <span>Manage rooms</span>
+      <button id="closeManageBtn">Back</button>
+    </div>
+    <p class="sub">All rooms currently stored, most recently active first.</p>
+    <div id="manageList"></div>
+  </div>
+
+  <div id="app">
+    <div class="banner">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2C8 7 4 10 4 14a5 5 0 0 0 8 4c0 2-1 3-2 4h8c-1-1-2-2-2-4a5 5 0 0 0 8-4c0-4-4-7-8-12z" fill="#EF9F27"/>
+      </svg>
+      <div>
+        <p class="title">Spade scoreboard</p>
+        <p class="tag">Live score tracker for the group</p>
+      </div>
+    </div>
+    <div class="room-code-bar">
+      <span>Room: <span class="code" id="roomCodeLabel"></span></span>
+      <div style="display:flex;gap:6px;">
+        <button id="leaveRoomBtn">Leave</button>
+        <button id="deleteRoomBtn">Delete room</button>
+      </div>
+    </div>
+
+    <p class="sub" id="topSub">Live shared board — everyone in this room sees the same scores.</p>
+
+    <div class="card players-card" id="playersCard">
+      <p class="totals-title" style="margin-bottom:4px;">Players</p>
+      <div id="playerList"></div>
+      <div class="add-row">
+        <input type="text" id="newPlayerName" placeholder="Add a player name">
+        <button id="addPlayerBtn">Add player</button>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <select id="roundSel"></select>
+      <button id="resetBtn">Reset all</button>
+    </div>
+
+    <div class="card" id="roundCard"></div>
+
+    <div class="totals-card">
+      <p class="totals-title">Totals</p>
+      <div id="totals"></div>
+      <button id="copyBtn" style="margin-top:10px;width:100%;">Copy standings to share</button>
+    </div>
+
+    <p class="status" id="status">Loading…</p>
+  </div>
+
+  <div class="overlay" id="overlay" style="display:none;">
+    <div class="modal">
+      <h2>Confirm this round</h2>
+      <p class="sub">Check everyone's bid and tricks won before scores are locked in.</p>
+      <div id="modalRows"></div>
+      <div class="modal-actions">
+        <button id="modalCancel">Go back and edit</button>
+        <button id="modalConfirm" class="primary">Confirm and score</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="genericOverlay" style="display:none;">
+    <div class="modal">
+      <h2 id="genericTitle">Are you sure?</h2>
+      <p class="sub" id="genericBody"></p>
+      <div class="modal-actions" id="genericActions"></div>
+    </div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDuNrNHKexJC5peHRRzBT-D5Pt7smkUej8",
+  authDomain: "spade-scoreboard-95b9a.firebaseapp.com",
+  databaseURL: "https://spade-scoreboard-95b9a-default-rtdb.firebaseio.com/",
+  projectId: "spade-scoreboard-95b9a",
+  storageBucket: "spade-scoreboard-95b9a.firebasestorage.app",
+  messagingSenderId: "910649071450",
+  appId: "1:910649071450:web:a5c6115bbdaa6413678563"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const NROUNDS = 13;
+let state = null;
+let nextId = 1;
+let roomCode = null;
+let roomRef = null;
+
+function defaultPlayers(){
+  return ["P1","P2","P3","P4","P5","P6"].map(name => ({ id: nextId++, name }));
+}
+
+function emptyRoundsFor(players){
+  return Array.from({length:NROUNDS}, () => {
+    const cells = {};
+    players.forEach(p => { cells[p.id] = { bid: null, won: null }; });
+    return { confirmed: false, cells };
+  });
+}
+
+function emptyState(){
+  const players = defaultPlayers();
+  return { players, rounds: emptyRoundsFor(players), nextId, lastAccessed: Date.now() };
+}
+
+function score(b,w){
+  if(b===null||w===null) return 0;
+  if(w===b) return 10*b;
+  if(w<b) return 20*w - 10*b;
+  return 10*b + (w-b);
+}
+
+function showConfirmDialog(title, body, onConfirm){
+  document.getElementById('genericTitle').textContent = title;
+  document.getElementById('genericBody').textContent = body;
+  const actions = document.getElementById('genericActions');
+  actions.innerHTML = '';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'primary';
+  confirmBtn.textContent = 'Yes, continue';
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+  const overlay = document.getElementById('genericOverlay');
+  overlay.style.display = 'flex';
+  cancelBtn.addEventListener('click', () => { overlay.style.display = 'none'; });
+  confirmBtn.addEventListener('click', () => { overlay.style.display = 'none'; onConfirm(); });
+}
+
+function showAlertDialog(title, body){
+  document.getElementById('genericTitle').textContent = title;
+  document.getElementById('genericBody').textContent = body;
+  const actions = document.getElementById('genericActions');
+  actions.innerHTML = '';
+  const okBtn = document.createElement('button');
+  okBtn.className = 'primary';
+  okBtn.textContent = 'Got it';
+  actions.appendChild(okBtn);
+  const overlay = document.getElementById('genericOverlay');
+  overlay.style.display = 'flex';
+  okBtn.addEventListener('click', () => { overlay.style.display = 'none'; });
+}
+
+function ensureRoundCells(){
+  state.rounds.forEach(r => {
+    state.players.forEach(p => { if(!r.cells[p.id]) r.cells[p.id] = { bid: null, won: null }; });
+  });
+}
+
+function saveState(){
+  if(!roomRef) return;
+  state.lastAccessed = Date.now();
+  roomRef.set(state);
+}
+
+function addPlayer(name){
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  const p = { id: nextId++, name: trimmed };
+  state.players.push(p);
+  state.rounds.forEach(r => { r.cells[p.id] = { bid: null, won: null }; });
+  state.nextId = nextId;
+  saveState();
+  renderAll();
+}
+
+function removePlayer(id){
+  if(state.players.length <= 2){
+    showAlertDialog('Can\'t remove player', 'You need at least 2 players.');
+    return;
+  }
+  state.players = state.players.filter(p => p.id !== id);
+  state.rounds.forEach(r => { delete r.cells[id]; });
+  saveState();
+  renderAll();
+}
+
+function renderPlayers(){
+  const box = document.getElementById('playerList');
+  box.innerHTML = '';
+  state.players.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = p.name;
+    nameInput.addEventListener('change', e => {
+      p.name = e.target.value || p.name;
+      saveState();
+      renderRound();
+      renderTotals();
+    });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => removePlayer(p.id));
+
+    chip.appendChild(nameInput);
+    chip.appendChild(removeBtn);
+    box.appendChild(chip);
+  });
+}
+
+document.getElementById('addPlayerBtn').addEventListener('click', () => {
+  const input = document.getElementById('newPlayerName');
+  addPlayer(input.value);
+  input.value = '';
+});
+document.getElementById('newPlayerName').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    addPlayer(e.target.value);
+    e.target.value = '';
+  }
+});
+
+function roundStatus(ri){
+  const r = state.rounds[ri];
+  if(r.confirmed) return 'done';
+  const any = state.players.some(p => r.cells[p.id] && (r.cells[p.id].bid !== null || r.cells[p.id].won !== null));
+  return any ? 'progress' : 'upcoming';
+}
+
+const roundSel = document.getElementById('roundSel');
+function renderRoundOptions(){
+  const current = roundSel.value;
+  roundSel.innerHTML = '';
+  for(let i=0;i<NROUNDS;i++){
+    const o = document.createElement('option');
+    o.value = i;
+    const st = roundStatus(i);
+    const label = 'Round ' + (i+1) + ' (' + (i+1) + ' cards)';
+    o.textContent = label + ' — ' + (st === 'done' ? 'completed' : st === 'progress' ? 'in progress' : 'upcoming');
+    roundSel.appendChild(o);
+  }
+  roundSel.value = current !== '' ? current : '0';
+}
+roundSel.addEventListener('change', renderRound);
+
+function renderRound(){
+  ensureRoundCells();
+  const ri = parseInt(roundSel.value);
+  const cards = ri+1;
+  const round = state.rounds[ri];
+  const card = document.getElementById('roundCard');
+  card.innerHTML = '';
+
+  const st = roundStatus(ri);
+  card.className = 'card' + (st === 'done' ? ' done' : st === 'progress' ? ' progress' : '');
+
+  const header = document.createElement('div');
+  header.className = 'round-header';
+  const badge = document.createElement('span');
+  if(st !== 'upcoming'){
+    badge.className = 'badge ' + (st === 'done' ? 'done' : 'progress');
+    badge.textContent = st === 'done' ? 'Completed' : 'In progress';
+  }
+  header.appendChild(badge);
+  card.appendChild(header);
+
+  const head = document.createElement('div');
+  head.className = 'rowhead';
+  head.innerHTML = '<span>player</span><span>bid</span><span>won</span><span style="text-align:right;">pts</span>';
+  card.appendChild(head);
+
+  state.players.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const nameLabel = document.createElement('div');
+    nameLabel.textContent = p.name;
+    nameLabel.style.cssText = 'font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+    const bidInput = document.createElement('input');
+    bidInput.type = 'number'; bidInput.min = 0; bidInput.max = cards; bidInput.placeholder = 'bid';
+    bidInput.value = round.cells[p.id].bid ?? '';
+    bidInput.disabled = round.confirmed;
+
+    const wonInput = document.createElement('input');
+    wonInput.type = 'number'; wonInput.min = 0; wonInput.max = cards; wonInput.placeholder = 'won';
+    wonInput.value = round.cells[p.id].won ?? '';
+    wonInput.disabled = round.confirmed;
+
+    const scoreOut = document.createElement('div');
+    scoreOut.className = 'pts';
+
+    function refreshScore(){
+      const cell = round.cells[p.id];
+      scoreOut.textContent = (cell.bid!==null && cell.won!==null) ? score(cell.bid, cell.won) : '–';
+    }
+    refreshScore();
+
+    bidInput.addEventListener('change', e => {
+      let v = e.target.value === '' ? null : parseInt(e.target.value);
+      if(v !== null && (isNaN(v) || v < 0 || v > cards)) { e.target.value = round.cells[p.id].bid ?? ''; return; }
+      round.cells[p.id].bid = v; refreshScore(); saveState();
+    });
+    wonInput.addEventListener('change', e => {
+      let v = e.target.value === '' ? null : parseInt(e.target.value);
+      if(v !== null && (isNaN(v) || v < 0 || v > cards)) { e.target.value = round.cells[p.id].won ?? ''; return; }
+      round.cells[p.id].won = v; refreshScore(); saveState();
+    });
+
+    row.appendChild(nameLabel);
+    row.appendChild(bidInput);
+    row.appendChild(wonInput);
+    row.appendChild(scoreOut);
+    card.appendChild(row);
+  });
+
+  const errorP = document.createElement('p');
+  errorP.className = 'error-text';
+  errorP.style.display = 'none';
+  card.appendChild(errorP);
+
+  const actions = document.createElement('div');
+  actions.className = 'round-actions';
+  if(round.confirmed){
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit this round';
+    editBtn.addEventListener('click', () => {
+      round.confirmed = false;
+      saveState();
+      renderRoundOptions();
+      roundSel.value = ri;
+      renderRound();
+      renderTotals();
+    });
+    actions.appendChild(editBtn);
+  } else {
+    const calcBtn = document.createElement('button');
+    calcBtn.className = 'primary';
+    calcBtn.textContent = 'Calculate scores';
+    calcBtn.addEventListener('click', () => {
+      const missing = state.players.some(p => round.cells[p.id].bid === null || round.cells[p.id].won === null);
+      if(missing){
+        errorP.textContent = 'Enter a bid and tricks won for every player first.';
+        errorP.style.display = 'block';
+        return;
+      }
+      const totalWon = state.players.reduce((sum,p) => sum + round.cells[p.id].won, 0);
+      if(totalWon > cards){
+        errorP.textContent = 'Tricks won add up to ' + totalWon + ', but only ' + cards + ' ' + (cards===1?'trick was':'tricks were') + ' played this round. Check the numbers.';
+        errorP.style.display = 'block';
+        return;
+      }
+      errorP.style.display = 'none';
+      openConfirmModal(ri);
+    });
+    actions.appendChild(calcBtn);
+  }
+  card.appendChild(actions);
+}
+
+function openConfirmModal(ri){
+  const round = state.rounds[ri];
+  const rows = document.getElementById('modalRows');
+  rows.innerHTML = '';
+  state.players.forEach(p => {
+    const cell = round.cells[p.id];
+    const row = document.createElement('div');
+    row.className = 'modal-row';
+    row.innerHTML = '<span>'+p.name+'</span><span>bid '+cell.bid+', won '+cell.won+'</span>';
+    rows.appendChild(row);
+  });
+  document.getElementById('overlay').style.display = 'flex';
+
+  const confirmBtn = document.getElementById('modalConfirm');
+  const cancelBtn = document.getElementById('modalCancel');
+  const newConfirm = confirmBtn.cloneNode(true);
+  confirmBtn.replaceWith(newConfirm);
+  const newCancel = cancelBtn.cloneNode(true);
+  cancelBtn.replaceWith(newCancel);
+
+  newCancel.addEventListener('click', () => {
+    document.getElementById('overlay').style.display = 'none';
+  });
+  newConfirm.addEventListener('click', () => {
+    round.confirmed = true;
+    saveState();
+    document.getElementById('overlay').style.display = 'none';
+    const nextIdx = ri < NROUNDS - 1 ? ri + 1 : ri;
+    renderRoundOptions();
+    roundSel.value = nextIdx;
+    renderRound();
+    renderTotals();
+  });
+}
+
+function renderTotals(){
+  const box = document.getElementById('totals');
+  box.innerHTML = '';
+  const totals = state.players.map(p => {
+    const roundSummaries = [];
+    state.rounds.forEach((r, ri) => {
+      if(!r.confirmed) return;
+      const c = r.cells[p.id];
+      if(!c) return;
+      roundSummaries.push('R'+(ri+1)+' ('+c.bid+','+c.won+','+score(c.bid,c.won)+')');
+    });
+    return {
+      name: p.name,
+      total: state.rounds.reduce((sum,r) => r.confirmed ? sum + score(r.cells[p.id]?.bid ?? null, r.cells[p.id]?.won ?? null) : sum, 0),
+      summary: roundSummaries.join('  ')
+    };
+  });
+  totals.sort((a,b) => b.total - a.total);
+  totals.forEach((t, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'trow-wrap';
+    const row = document.createElement('div');
+    row.className = 'trow' + (idx===0 ? ' rank1' : '');
+    row.innerHTML = '<span>'+t.name+'</span><span>'+t.total+'</span>';
+    wrap.appendChild(row);
+    if(t.summary){
+      const detail = document.createElement('div');
+      detail.className = 'round-summary';
+      detail.textContent = t.summary;
+      wrap.appendChild(detail);
+    }
+    box.appendChild(wrap);
+  });
+}
+
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  const totals = state.players.map(p => ({
+    name: p.name,
+    total: state.rounds.reduce((sum,r) => r.confirmed ? sum + score(r.cells[p.id]?.bid ?? null, r.cells[p.id]?.won ?? null) : sum, 0)
+  })).sort((a,b) => b.total - a.total);
+  const doneCount = state.rounds.filter(r => r.confirmed).length;
+  const lines = ['Spade standings after round ' + doneCount + ':'];
+  totals.forEach((t, i) => lines.push((i+1) + '. ' + t.name + ' — ' + t.total));
+  const text = lines.join('\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    showAlertDialog('Copied', 'Standings copied — paste them into your group chat.');
+  }catch(e){
+    showAlertDialog('Standings', text);
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  showConfirmDialog(
+    'Reset the scoreboard?',
+    'This clears every round and every score for everyone in this room. Players stay the same.',
+    () => {
+      const players = state.players;
+      state = { players, rounds: emptyRoundsFor(players), nextId };
+      saveState();
+      renderAll();
+    }
+  );
+});
+
+document.getElementById('leaveRoomBtn').addEventListener('click', () => {
+  if(roomRef) roomRef.off();
+  roomRef = null;
+  roomCode = null;
+  try{ localStorage.removeItem('spade-room-code'); }catch(e){}
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('roomScreen').style.display = 'flex';
+});
+
+document.getElementById('deleteRoomBtn').addEventListener('click', () => {
+  const codeToDelete = roomCode;
+  showConfirmDialog(
+    'Delete this room?',
+    'This permanently removes room "' + codeToDelete + '" and everything in it, for everyone. This can\'t be undone.',
+    () => {
+      const ref = roomRef;
+      if(ref) ref.off();
+      db.ref('rooms/' + codeToDelete).remove().then(() => {
+        roomRef = null;
+        roomCode = null;
+        try{ localStorage.removeItem('spade-room-code'); }catch(e){}
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('roomScreen').style.display = 'flex';
+        document.getElementById('roomError').style.display = 'none';
+      }).catch(() => {
+        showAlertDialog('Could not delete', 'Something went wrong deleting the room. Try again.');
+      });
+    }
+  );
+});
+
+function renderAll(){
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+}
+
+let typingGuard = false;
+function attachRoomListener(code){
+  roomCode = code;
+  roomRef = db.ref('rooms/' + code);
+  document.getElementById('roomCodeLabel').textContent = code;
+  document.getElementById('roomScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  try{ localStorage.setItem('spade-room-code', code); }catch(e){}
+  roomRef.child('lastAccessed').set(Date.now());
+
+function normalizeState(val){
+  if(!val) return val;
+  if(!Array.isArray(val.players)) val.players = val.players ? Object.values(val.players) : [];
+  if(!Array.isArray(val.rounds) || val.rounds.length !== NROUNDS){
+    val.rounds = emptyRoundsFor(val.players);
+  }
+  val.rounds.forEach(r => {
+    if(typeof r.confirmed !== 'boolean') r.confirmed = false;
+    if(!r.cells) r.cells = {};
+    val.players.forEach(p => {
+      if(!r.cells[p.id]) r.cells[p.id] = { bid: null, won: null };
+      if(r.cells[p.id].bid === undefined) r.cells[p.id].bid = null;
+      if(r.cells[p.id].won === undefined) r.cells[p.id].won = null;
+    });
+  });
+  return val;
+}
+
+  roomRef.on('value', snap => {
+    const val = normalizeState(snap.val());
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && activeEl.tagName === 'INPUT';
+    const modalOpen = document.getElementById('overlay').style.display === 'flex';
+    if(!val){
+      if(roomRef){
+        const wasCode = roomCode;
+        roomRef.off();
+        roomRef = null;
+        roomCode = null;
+        try{ localStorage.removeItem('spade-room-code'); }catch(e){}
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('roomScreen').style.display = 'flex';
+        showAlertDialog('Room deleted', 'Room "' + wasCode + '" was deleted by its host.');
+      }
+      return;
+    }
+    if(val.nextId) nextId = Math.max(nextId, val.nextId);
+    if(isTyping || modalOpen){
+      state = val;
+      return;
+    }
+    state = val;
+    renderAll();
+    document.getElementById('status').textContent = 'Live · updated ' + new Date().toLocaleTimeString();
+  }, err => {
+    document.getElementById('status').textContent = 'Connection error — check the room code';
+  });
+}
+
+function codeLooksValid(c){
+  return /^[A-Za-z0-9_-]{3,24}$/.test(c);
+}
+
+function randomCode(){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for(let i=0;i<5;i++) out += chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+
+document.getElementById('createRoomBtn').addEventListener('click', () => {
+  const errEl = document.getElementById('roomError');
+  errEl.style.display = 'none';
+  let code = document.getElementById('createCodeInput').value.trim();
+  if(!code) code = randomCode();
+  if(!codeLooksValid(code)){
+    errEl.textContent = 'Use 3-24 letters, numbers, - or _ only.';
+    errEl.style.display = 'block';
+    return;
+  }
+  db.ref('rooms/' + code).once('value').then(snap => {
+    if(snap.exists()){
+      errEl.textContent = 'That code is already in use — try joining it instead, or pick a different code.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const fresh = emptyState();
+    db.ref('rooms/' + code).set(fresh).then(() => {
+      attachRoomListener(code);
+    });
+  });
+});
+
+document.getElementById('joinRoomBtn').addEventListener('click', () => {
+  const errEl = document.getElementById('roomError');
+  errEl.style.display = 'none';
+  const code = document.getElementById('joinCodeInput').value.trim();
+  if(!code){
+    errEl.textContent = 'Enter a room code to join.';
+    errEl.style.display = 'block';
+    return;
+  }
+  db.ref('rooms/' + code).once('value').then(snap => {
+    if(!snap.exists()){
+      errEl.textContent = 'No room found with that code. Check it with whoever created the room.';
+      errEl.style.display = 'block';
+      return;
+    }
+    attachRoomListener(code);
+  });
+});
+
+function formatWhen(ts){
+  if(!ts) return 'unknown';
+  const d = new Date(ts);
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  if(diffMin < 1) return 'just now';
+  if(diffMin < 60) return diffMin + ' min ago';
+  const diffHr = Math.floor(diffMin / 60);
+  if(diffHr < 24) return diffHr + ' hr ago';
+  const diffDay = Math.floor(diffHr / 24);
+  if(diffDay < 7) return diffDay + ' day' + (diffDay===1?'':'s') + ' ago';
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+function loadManageList(){
+  const box = document.getElementById('manageList');
+  box.innerHTML = '<p class="sub">Loading…</p>';
+  db.ref('rooms').once('value').then(snap => {
+    const val = snap.val() || {};
+    const entries = Object.keys(val).map(code => ({
+      code,
+      lastAccessed: val[code].lastAccessed || 0,
+      playerCount: Array.isArray(val[code].players) ? val[code].players.length : (val[code].players ? Object.keys(val[code].players).length : 0)
+    }));
+    entries.sort((a,b) => b.lastAccessed - a.lastAccessed);
+    box.innerHTML = '';
+    if(entries.length === 0){
+      box.innerHTML = '<p class="sub">No rooms found.</p>';
+      return;
+    }
+    entries.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+      const left = document.createElement('div');
+      left.innerHTML = '<div class="code">' + e.code + '</div><div class="meta">' + e.playerCount + ' players · last active ' + formatWhen(e.lastAccessed) + '</div>';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => {
+        showConfirmDialog(
+          'Delete room "' + e.code + '"?',
+          'This permanently removes it and everything in it. This can\'t be undone.',
+          () => {
+            db.ref('rooms/' + e.code).remove().then(() => {
+              if(roomCode === e.code){
+                if(roomRef) roomRef.off();
+                roomRef = null;
+                roomCode = null;
+                try{ localStorage.removeItem('spade-room-code'); }catch(err){}
+                document.getElementById('app').style.display = 'none';
+              }
+              loadManageList();
+            }).catch(() => {
+              showAlertDialog('Could not delete', 'Something went wrong deleting the room. Try again.');
+            });
+          }
+        );
+      });
+      row.appendChild(left);
+      row.appendChild(delBtn);
+      box.appendChild(row);
+    });
+  }).catch(() => {
+    box.innerHTML = '<p class="error-text">Could not load rooms — check that the database rules allow reading "rooms".</p>';
+  });
+}
+
+document.getElementById('openManageBtn').addEventListener('click', () => {
+  document.getElementById('roomScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('manageScreen').style.display = 'flex';
+  loadManageList();
+});
+
+document.getElementById('closeManageBtn').addEventListener('click', () => {
+  document.getElementById('manageScreen').style.display = 'none';
+  if(roomRef){
+    document.getElementById('app').style.display = 'block';
+  } else {
+    document.getElementById('roomScreen').style.display = 'flex';
+  }
+});
+
+(function init(){
+  let saved = null;
+  try{ saved = localStorage.getItem('spade-room-code'); }catch(e){}
+  if(saved){
+    db.ref('rooms/' + saved).once('value').then(snap => {
+      if(snap.exists()){
+        attachRoomListener(saved);
+      } else {
+        try{ localStorage.removeItem('spade-room-code'); }catch(e){}
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
