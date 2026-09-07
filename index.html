@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spade Scoreboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:title" content="Spade Scoreboard">
+<meta property="og:description" content="Live score tracker for our spade card game.">
+<meta property="og:image" content="/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spade Scoreboard">
+<meta name="twitter:image" content="/og-image.png">
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+    background: #fafaf8;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #666; margin: 0 0 16px; }
+  select, button, input {
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: white;
+    box-sizing: border-box;
+  }
+  select { flex: 1; }
+  button { cursor: pointer; }
+  button.primary { background: #2f6f4f; color: white; border-color: #2f6f4f; font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .topbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .card {
+    background: white;
+    border: 1px solid #e5e5e0;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card.done { border-color: #2f6f4f; }
+  .card.progress { border-color: #c98a1f; }
+  .rowhead, .row {
+    display: grid;
+    grid-template-columns: 1.2fr 60px 60px 50px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .rowhead { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.03em; }
+  .row input[type=text] { font-weight: 500; }
+  .row input[type=number] { text-align: center; }
+  .pts { text-align: right; font-weight: 600; font-size: 15px; }
+  .totals-card { background: #f3f3ee; border-radius: 12px; padding: 14px 16px; }
+  .totals-title { font-size: 13px; font-weight: 600; color: #555; margin: 0 0 8px; }
+  .trow { display: flex; justify-content: space-between; font-size: 15px; padding: 3px 0; }
+  .trow-wrap { padding: 3px 0; border-bottom: 1px solid #ececE6; }
+  .trow-wrap:last-child { border-bottom: none; }
+  .trow-wrap .trow { padding: 0; border: none; }
+  .round-summary { font-size: 9px; color: #999; line-height: 1.4; margin-top: 2px; word-break: break-word; }
+  .rank1 { font-weight: 700; }
+  .status { font-size: 12px; color: #999; text-align: center; margin-top: 12px; }
+  .players-card { display: flex; flex-direction: column; gap: 8px; }
+  .player-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f3f3ee; border-radius: 8px; padding: 6px 10px; }
+  .player-chip input[type=text] { border: none; background: transparent; padding: 4px 2px; flex: 1; }
+  .player-chip button { padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+  .add-row { display: flex; gap: 8px; }
+  .add-row input { flex: 1; }
+  .add-row button { white-space: nowrap; }
+  .round-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .round-actions button { flex: 1; }
+  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .badge.done { background: #dff3e6; color: #1e5f3b; }
+  .badge.progress { background: #fbecd2; color: #8a5c0d; }
+  .round-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .error-text { font-size: 12px; color: #b3261e; margin: 4px 0 0; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10;
+  }
+  .modal {
+    background: white; border-radius: 12px; padding: 20px; max-width: 380px; width: 100%;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 16px; margin: 0 0 4px; }
+  .modal p.sub { margin: 0 0 12px; }
+  .modal-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #eee; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions button { flex: 1; }
+  @media (prefers-color-scheme: dark) {
+    .player-chip { background: #2c2c2c; }
+    body { background: #1a1a1a; color: #eee; }
+    .card, select, button, input { background: #262626; border-color: #3a3a3a; color: #eee; }
+    .totals-card { background: #222; }
+    .sub, .rowhead, .status { color: #999; }
+    .trow-wrap { border-color: #3a3a3a; }
+    .round-summary { color: #777; }
+    .totals-title { color: #bbb; }
+    .modal { background: #262626; }
+    .modal-row { border-color: #3a3a3a; }
+    .badge.done { background: #16332355; color: #7ed3a0; }
+    .badge.progress { background: #3a2c1055; color: #f0b74e; }
+    button.primary { background: #3d8f63; border-color: #3d8f63; }
+  }
+</style>
+</head>
+<body>
+  <h1>Spade scoreboard</h1>
+  <p class="sub">Shared live score tracker — everyone with this link sees the same board.</p>
+
+  <div class="card players-card" id="playersCard">
+    <p class="totals-title" style="margin-bottom:4px;">Players</p>
+    <div id="playerList"></div>
+    <div class="add-row">
+      <input type="text" id="newPlayerName" placeholder="Add a player name">
+      <button id="addPlayerBtn">Add player</button>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <select id="roundSel"></select>
+    <button id="resetBtn">Reset all</button>
+  </div>
+
+  <div class="card" id="roundCard"></div>
+
+  <div class="totals-card">
+    <p class="totals-title">Totals</p>
+    <div id="totals"></div>
+  </div>
+
+  <p class="status" id="status">Loading…</p>
+
+  <div class="overlay" id="overlay" style="display:none;">
+    <div class="modal">
+      <h2>Confirm this round</h2>
+      <p class="sub">Check everyone's bid and tricks won before scores are locked in.</p>
+      <div id="modalRows"></div>
+      <div class="modal-actions">
+        <button id="modalCancel">Go back and edit</button>
+        <button id="modalConfirm" class="primary">Confirm and score</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="genericOverlay" style="display:none;">
+    <div class="modal">
+      <h2 id="genericTitle">Are you sure?</h2>
+      <p class="sub" id="genericBody"></p>
+      <div class="modal-actions" id="genericActions"></div>
+    </div>
+  </div>
+
+<script>
+const NROUNDS = 13;
+const KEY = "spade-game-v3";
+let state = null;
+let pollTimer = null;
+let nextId = 1;
+
+function defaultPlayers(){
+  return ["P1","P2","P3","P4","P5","P6"].map(name => ({ id: nextId++, name }));
+}
+
+function emptyRoundsFor(players){
+  return Array.from({length:NROUNDS}, () => {
+    const cells = {};
+    players.forEach(p => { cells[p.id] = { bid: null, won: null }; });
+    return { confirmed: false, cells };
+  });
+}
+
+function emptyState(){
+  const players = defaultPlayers();
+  return { players, rounds: emptyRoundsFor(players) };
+}
+
+function score(b,w){
+  if(b===null||w===null) return 0;
+  if(w===b) return 10*b;
+  if(w<b) return 20*w - 10*b;
+  return 10*b + (w-b);
+}
+
+async function loadState(){
+  try{
+    const r = await window.storage.get(KEY, true);
+    if(!r) return emptyState();
+    const s = JSON.parse(r.value);
+    const maxId = s.players.reduce((m,p)=>Math.max(m,p.id),0);
+    nextId = maxId + 1;
+    return s;
+  }catch(e){
+    return emptyState();
+  }
+}
+async function saveState(){
+  try{
+    await window.storage.set(KEY, JSON.stringify(state), true);
+    document.getElementById('status').textContent = 'Synced just now';
+  }catch(e){
+    document.getElementById('status').textContent = 'Could not sync — check connection';
+  }
+}
+
+function showConfirmDialog(title, body, onConfirm){
+  document.getElementById('genericTitle').textContent = title;
+  document.getElementById('genericBody').textContent = body;
+  const actions = document.getElementById('genericActions');
+  actions.innerHTML = '';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'primary';
+  confirmBtn.textContent = 'Yes, continue';
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+  const overlay = document.getElementById('genericOverlay');
+  overlay.style.display = 'flex';
+  cancelBtn.addEventListener('click', () => { overlay.style.display = 'none'; });
+  confirmBtn.addEventListener('click', () => { overlay.style.display = 'none'; onConfirm(); });
+}
+
+function showAlertDialog(title, body){
+  document.getElementById('genericTitle').textContent = title;
+  document.getElementById('genericBody').textContent = body;
+  const actions = document.getElementById('genericActions');
+  actions.innerHTML = '';
+  const okBtn = document.createElement('button');
+  okBtn.className = 'primary';
+  okBtn.textContent = 'Got it';
+  actions.appendChild(okBtn);
+  const overlay = document.getElementById('genericOverlay');
+  overlay.style.display = 'flex';
+  okBtn.addEventListener('click', () => { overlay.style.display = 'none'; });
+}
+
+function ensureRoundCells(){
+  state.rounds.forEach(r => {
+    state.players.forEach(p => { if(!r.cells[p.id]) r.cells[p.id] = { bid: null, won: null }; });
+  });
+}
+
+function addPlayer(name){
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  const p = { id: nextId++, name: trimmed };
+  state.players.push(p);
+  state.rounds.forEach(r => { r.cells[p.id] = { bid: null, won: null }; });
+  saveState();
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+}
+
+function removePlayer(id){
+  if(state.players.length <= 2){
+    showAlertDialog('Can\'t remove player', 'You need at least 2 players.');
+    return;
+  }
+  state.players = state.players.filter(p => p.id !== id);
+  state.rounds.forEach(r => { delete r.cells[id]; });
+  saveState();
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+}
+
+function renderPlayers(){
+  const box = document.getElementById('playerList');
+  box.innerHTML = '';
+  state.players.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = p.name;
+    nameInput.addEventListener('change', e => {
+      p.name = e.target.value || p.name;
+      saveState(); renderRound(); renderTotals();
+    });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => removePlayer(p.id));
+
+    chip.appendChild(nameInput);
+    chip.appendChild(removeBtn);
+    box.appendChild(chip);
+  });
+}
+
+document.getElementById('addPlayerBtn').addEventListener('click', () => {
+  const input = document.getElementById('newPlayerName');
+  addPlayer(input.value);
+  input.value = '';
+});
+document.getElementById('newPlayerName').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    addPlayer(e.target.value);
+    e.target.value = '';
+  }
+});
+
+function roundStatus(ri){
+  const r = state.rounds[ri];
+  if(r.confirmed) return 'done';
+  const any = state.players.some(p => r.cells[p.id] && (r.cells[p.id].bid !== null || r.cells[p.id].won !== null));
+  return any ? 'progress' : 'upcoming';
+}
+
+const roundSel = document.getElementById('roundSel');
+function renderRoundOptions(){
+  const current = roundSel.value;
+  roundSel.innerHTML = '';
+  for(let i=0;i<NROUNDS;i++){
+    const o = document.createElement('option');
+    o.value = i;
+    const st = roundStatus(i);
+    const label = 'Round ' + (i+1) + ' (' + (i+1) + ' cards)';
+    o.textContent = label + ' — ' + (st === 'done' ? 'completed' : st === 'progress' ? 'in progress' : 'upcoming');
+    roundSel.appendChild(o);
+  }
+  roundSel.value = current !== '' ? current : '0';
+}
+roundSel.addEventListener('change', renderRound);
+
+function renderRound(){
+  ensureRoundCells();
+  const ri = parseInt(roundSel.value);
+  const cards = ri+1;
+  const round = state.rounds[ri];
+  const card = document.getElementById('roundCard');
+  card.innerHTML = '';
+
+  const st = roundStatus(ri);
+  card.className = 'card' + (st === 'done' ? ' done' : st === 'progress' ? ' progress' : '');
+
+  const header = document.createElement('div');
+  header.className = 'round-header';
+  const badge = document.createElement('span');
+  if(st !== 'upcoming'){
+    badge.className = 'badge ' + (st === 'done' ? 'done' : 'progress');
+    badge.textContent = st === 'done' ? 'Completed' : 'In progress';
+  }
+  header.appendChild(badge);
+  card.appendChild(header);
+
+  const head = document.createElement('div');
+  head.className = 'rowhead';
+  head.innerHTML = '<span>player</span><span>bid</span><span>won</span><span style="text-align:right;">pts</span>';
+  card.appendChild(head);
+
+  state.players.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const nameLabel = document.createElement('div');
+    nameLabel.textContent = p.name;
+    nameLabel.style.cssText = 'font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+
+    const bidInput = document.createElement('input');
+    bidInput.type = 'number'; bidInput.min = 0; bidInput.max = cards; bidInput.placeholder = 'bid';
+    bidInput.value = round.cells[p.id].bid ?? '';
+    bidInput.disabled = round.confirmed;
+
+    const wonInput = document.createElement('input');
+    wonInput.type = 'number'; wonInput.min = 0; wonInput.max = cards; wonInput.placeholder = 'won';
+    wonInput.value = round.cells[p.id].won ?? '';
+    wonInput.disabled = round.confirmed;
+
+    const scoreOut = document.createElement('div');
+    scoreOut.className = 'pts';
+
+    function refreshScore(){
+      const cell = round.cells[p.id];
+      scoreOut.textContent = (cell.bid!==null && cell.won!==null) ? score(cell.bid, cell.won) : '–';
+    }
+    refreshScore();
+
+    bidInput.addEventListener('change', e => {
+      let v = e.target.value === '' ? null : parseInt(e.target.value);
+      if(v !== null && (isNaN(v) || v < 0 || v > cards)) { e.target.value = round.cells[p.id].bid ?? ''; return; }
+      round.cells[p.id].bid = v; refreshScore(); saveState(); renderRoundOptions(); roundSel.value = ri;
+    });
+    wonInput.addEventListener('change', e => {
+      let v = e.target.value === '' ? null : parseInt(e.target.value);
+      if(v !== null && (isNaN(v) || v < 0 || v > cards)) { e.target.value = round.cells[p.id].won ?? ''; return; }
+      round.cells[p.id].won = v; refreshScore(); saveState(); renderRoundOptions(); roundSel.value = ri;
+    });
+
+    row.appendChild(nameLabel);
+    row.appendChild(bidInput);
+    row.appendChild(wonInput);
+    row.appendChild(scoreOut);
+    card.appendChild(row);
+  });
+
+  const errorP = document.createElement('p');
+  errorP.className = 'error-text';
+  errorP.style.display = 'none';
+  card.appendChild(errorP);
+
+  const actions = document.createElement('div');
+  actions.className = 'round-actions';
+  if(round.confirmed){
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit this round';
+    editBtn.addEventListener('click', () => {
+      round.confirmed = false;
+      saveState();
+      renderRoundOptions();
+      renderRound();
+      renderTotals();
+    });
+    actions.appendChild(editBtn);
+  } else {
+    const calcBtn = document.createElement('button');
+    calcBtn.className = 'primary';
+    calcBtn.textContent = 'Calculate scores';
+    calcBtn.addEventListener('click', () => {
+      const missing = state.players.some(p => round.cells[p.id].bid === null || round.cells[p.id].won === null);
+      if(missing){
+        errorP.textContent = 'Enter a bid and tricks won for every player first.';
+        errorP.style.display = 'block';
+        return;
+      }
+      const totalWon = state.players.reduce((sum,p) => sum + round.cells[p.id].won, 0);
+      if(totalWon > cards){
+        errorP.textContent = 'Tricks won add up to ' + totalWon + ', but only ' + cards + ' ' + (cards===1?'trick was':'tricks were') + ' played this round. Check the numbers.';
+        errorP.style.display = 'block';
+        return;
+      }
+      errorP.style.display = 'none';
+      openConfirmModal(ri);
+    });
+    actions.appendChild(calcBtn);
+  }
+  card.appendChild(actions);
+}
+
+function openConfirmModal(ri){
+  const round = state.rounds[ri];
+  const rows = document.getElementById('modalRows');
+  rows.innerHTML = '';
+  state.players.forEach(p => {
+    const cell = round.cells[p.id];
+    const row = document.createElement('div');
+    row.className = 'modal-row';
+    row.innerHTML = '<span>'+p.name+'</span><span>bid '+cell.bid+', won '+cell.won+'</span>';
+    rows.appendChild(row);
+  });
+  document.getElementById('overlay').style.display = 'flex';
+
+  const confirmBtn = document.getElementById('modalConfirm');
+  const cancelBtn = document.getElementById('modalCancel');
+  const newConfirm = confirmBtn.cloneNode(true);
+  confirmBtn.replaceWith(newConfirm);
+  const newCancel = cancelBtn.cloneNode(true);
+  cancelBtn.replaceWith(newCancel);
+
+  newCancel.addEventListener('click', () => {
+    document.getElementById('overlay').style.display = 'none';
+  });
+  newConfirm.addEventListener('click', () => {
+    round.confirmed = true;
+    saveState();
+    document.getElementById('overlay').style.display = 'none';
+    renderRoundOptions();
+    if(ri < NROUNDS - 1){
+      roundSel.value = ri + 1;
+    }
+    renderRound();
+    renderTotals();
+  });
+}
+
+function renderTotals(){
+  const box = document.getElementById('totals');
+  box.innerHTML = '';
+  const totals = state.players.map(p => {
+    const roundSummaries = [];
+    state.rounds.forEach((r, ri) => {
+      if(!r.confirmed) return;
+      const c = r.cells[p.id];
+      if(!c) return;
+      roundSummaries.push('R'+(ri+1)+' ('+c.bid+','+c.won+','+score(c.bid,c.won)+')');
+    });
+    return {
+      name: p.name,
+      total: state.rounds.reduce((sum,r) => r.confirmed ? sum + score(r.cells[p.id]?.bid ?? null, r.cells[p.id]?.won ?? null) : sum, 0),
+      summary: roundSummaries.join('  ')
+    };
+  });
+  totals.sort((a,b) => b.total - a.total);
+  totals.forEach((t, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'trow-wrap';
+    const row = document.createElement('div');
+    row.className = 'trow' + (idx===0 ? ' rank1' : '');
+    row.innerHTML = '<span>'+t.name+'</span><span>'+t.total+'</span>';
+    wrap.appendChild(row);
+    if(t.summary){
+      const detail = document.createElement('div');
+      detail.className = 'round-summary';
+      detail.textContent = t.summary;
+      wrap.appendChild(detail);
+    }
+    box.appendChild(wrap);
+  });
+}
+
+function isBlank(s){
+  return s.rounds.every(r => !r.confirmed && s.players.every(p => {
+    const c = r.cells[p.id];
+    return !c || (c.bid === null && c.won === null);
+  }));
+}
+
+function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+let isResetting = false;
+async function resetWithRetry(){
+  isResetting = true;
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn.disabled = true;
+  resetBtn.textContent = 'Resetting…';
+  const blank = emptyState();
+  blank.players = state.players;
+  let ok = false;
+  for(let attempt = 0; attempt < 4 && !ok; attempt++){
+    state = { players: blank.players, rounds: emptyRoundsFor(blank.players) };
+    await saveState();
+    await sleep(700);
+    const check = await loadState();
+    if(isBlank(check)){
+      state = check;
+      ok = true;
+    } else {
+      document.getElementById('status').textContent = 'Someone else was saving — retrying reset…';
+    }
+  }
+  resetBtn.disabled = false;
+  resetBtn.textContent = 'Reset all';
+  isResetting = false;
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+  document.getElementById('status').textContent = ok ? 'Reset complete' : 'Reset kept getting overwritten — try again when others are idle';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  showConfirmDialog(
+    'Reset the scoreboard?',
+    'This clears every round and every score for everyone using this link. Players stay the same.',
+    () => { resetWithRetry(); }
+  );
+});
+
+async function refreshFromServer(){
+  const fresh = await loadState();
+  const activeEl = document.activeElement;
+  const isTyping = activeEl && (activeEl.tagName === 'INPUT');
+  const modalOpen = document.getElementById('overlay').style.display === 'flex'
+    || document.getElementById('genericOverlay').style.display === 'flex';
+  if(isTyping || modalOpen || isResetting) return;
+  state = fresh;
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+  document.getElementById('status').textContent = 'Live · updated ' + new Date().toLocaleTimeString();
+}
+
+async function init(){
+  state = await loadState();
+  renderPlayers();
+  renderRoundOptions();
+  renderRound();
+  renderTotals();
+  document.getElementById('status').textContent = 'Live';
+  pollTimer = setInterval(refreshFromServer, 4000);
+}
+init();
+</script>
+</body>
+</html>
